@@ -35,37 +35,40 @@ class OBEX_Pusher(DeviceDiscoverer):
         self.inquiry_time_start = time.time()
         self.done = False
         self.discovered_address = []
-        self.signal_strength = -70
+        self.signal_strength = -100
         print "Inquiry Start!"
 
     def device_discovered(self, address, device_class, rssi, name):
+        found_time = time.time()
+        print ("|- Found a device: Time[ %f ] %s RSSI[ %s ] Name[ %s ]" %
+               (found_time - self.inquiry_time_start, address, rssi, name))
         if rssi > self.signal_strength:
-            found_time = time.time()
-            print ("|- Found a device: Time[ %f ] %s RSSI[ %s ] %s" %
-                   (found_time - self.inquiry_time_start, address, rssi, name))
             if address not in self.discovered_address:
                 self.discovered_address.append(address)
                 print "   |- Start a OBJECT PUSH process"
                 try:
                     print "   |- Created a Thread"
-                    Thread(target=self.obex_push, args=(address,)).start()
+                    Thread(target=self.object_push, args=(address,)).start()
                 except Exception as e:
                     print e
+        else:
+            print "   |- The device's bluetooth signal strength is not good."
 
     def object_push(self, address):
         print '      |- Finding the OBEX_OBJPUSH service from %s' % address
-        time.sleep(10)
         services = find_service(address=address, uuid=OBEX_OBJPUSH_CLASS)
         if services:
             channel = services[0]['port']
             client = Client(address, channel)
-            print '      |- Obect Push Channel is %s' % channel
+            print '      |- OBEX_OBJPUSH Channel is %s' % channel
             try:
                 client.connect()
                 client.put('message.txt', 'Hello World!')
                 client.disconnect()
             except IOError as e:
                 print e
+        else:
+            print '      |- NO OBEX_OBJPUSH PROFILE!!'
 
     def inquiry_complete(self):
         self.inquiry_time_end = time.time()
@@ -74,11 +77,11 @@ class OBEX_Pusher(DeviceDiscoverer):
         print ("  Inquiry Time - [ %f ]" %
                (self.inquiry_time_end - self.inquiry_time_start))
         print ("  Found %d devices" % len(self.discovered_address))
-        print "  Discovered Bluetooth Address:"
+        print "  Discovered Bluetooth Address with OBEX PUSH PROFILE:"
         print self.discovered_address
 
 op = OBEX_Pusher(device_id=1)
-op.find_devices(lookup_names=False)
+op.find_devices(lookup_names=False, duration=8, flush_cache=True)
 
 readfiles = [op, ]
 
