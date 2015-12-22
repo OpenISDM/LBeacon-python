@@ -35,7 +35,7 @@ class OBEX_Pusher(DeviceDiscoverer):
         self.inquiry_time_start = time.time()
         self.done = False
         self.discovered_address = []
-        self.signal_strength = -100
+        self.signal_strength = -75
         print "Inquiry Start!"
 
     def device_discovered(self, address, device_class, rssi, name):
@@ -45,16 +45,17 @@ class OBEX_Pusher(DeviceDiscoverer):
         if rssi > self.signal_strength:
             if address not in self.discovered_address:
                 self.discovered_address.append(address)
-                print "   |- Start a OBJECT PUSH process"
                 try:
-                    print "   |- Created a Thread"
+                    print "   |- Created a Thread for OBJECT PUSH process"
                     Thread(target=self.object_push, args=(address,)).start()
                 except Exception as e:
                     print e
         else:
-            print "   |- The device's bluetooth signal strength is not good."
+            print "   |- Bluetooth Signal Strength is NOT GOOD!"
 
     def object_push(self, address):
+        s = BluetoothSocket(RFCOMM)
+        s.bind(('00:1A:7D:DA:71:13',0))
         print '      |- Finding the OBEX_OBJPUSH service from %s' % address
         services = find_service(address=address, uuid=OBEX_OBJPUSH_CLASS)
         if services:
@@ -62,6 +63,7 @@ class OBEX_Pusher(DeviceDiscoverer):
             client = Client(address, channel)
             print '      |- OBEX_OBJPUSH Channel is %s' % channel
             try:
+                client.set_socket(s)
                 client.connect()
                 client.put('message.txt', 'Hello World!')
                 client.disconnect()
@@ -77,10 +79,10 @@ class OBEX_Pusher(DeviceDiscoverer):
         print ("  Inquiry Time - [ %f ]" %
                (self.inquiry_time_end - self.inquiry_time_start))
         print ("  Found %d devices" % len(self.discovered_address))
-        print "  Discovered Bluetooth Address with OBEX PUSH PROFILE:"
+        print "  Discovered Bluetooth Address:"
         print self.discovered_address
 
-op = OBEX_Pusher(device_id=1)
+op = OBEX_Pusher(device_id=0)
 op.find_devices(lookup_names=False, duration=8, flush_cache=True)
 
 readfiles = [op, ]
