@@ -28,6 +28,7 @@ from threading import Thread
 import select
 import time
 
+
 class DevicesDiscoverer(DeviceDiscoverer):
 
     def pre_inquiry(self):
@@ -40,7 +41,8 @@ class DevicesDiscoverer(DeviceDiscoverer):
     def device_discovered(self, address, device_class, rssi, name):
         if rssi > self.signal_strength:
             found_time = time.time()
-            print ("|- Found a device: Time[ %f ] %s RSSI[ %s ] %s" % (found_time - self.inquiry_time_start, address, rssi, name))
+            print ("|- Found a device: Time[ %f ] %s RSSI[ %s ] %s" %
+                   (found_time - self.inquiry_time_start, address, rssi, name))
             if address not in self.discovered_address:
                 self.discovered_address.append(address)
                 print "   |- Start a OBJECT PUSH process"
@@ -51,13 +53,13 @@ class DevicesDiscoverer(DeviceDiscoverer):
                     print e
 
     def obex_push(self, address):
-        print '      |- Finding the OBEX_OBJPUSH service from %s'%address
+        print '      |- Finding the OBEX_OBJPUSH service from %s' % address
         time.sleep(10)
         services = find_service(address=address, uuid=OBEX_OBJPUSH_CLASS)
         if services:
             channel = services[0]['port']
             client = Client(address, channel)
-            print '      |- Obect Push Channel is %s'%channel
+            print '      |- Obect Push Channel is %s' % channel
             try:
                 client.connect()
                 client.put('message.txt', 'Hello World!')
@@ -69,22 +71,24 @@ class DevicesDiscoverer(DeviceDiscoverer):
         self.inquiry_time_end = time.time()
         self.done = True
         print "Inquiry Completed!"
-        print ("  Inquiry Time - [ %f ]" % (self.inquiry_time_end - self.inquiry_time_start))
+        print ("  Inquiry Time - [ %f ]" %
+               (self.inquiry_time_end - self.inquiry_time_start))
         print ("  Found %d devices" % len(self.discovered_address))
         print "  Discovered Bluetooth Address:"
         print self.discovered_address
 
 d = DevicesDiscoverer(device_id=1)
-d.find_devices(lookup_names = False)
+d.find_devices(lookup_names=False)
 
-readfiles = [ d, ]
+readfiles = [d, ]
 
 timeout = 20
 
 while True:
-    rfds = select.select( readfiles, [], [] )[0]
+    rfds = select.select(readfiles, [], [])[0]
 
     if d in rfds:
         d.process_event()
 
-    if d.done: break
+    if d.done:
+        break
