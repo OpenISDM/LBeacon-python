@@ -29,7 +29,7 @@ import select
 import time
 
 
-class DevicesDiscoverer(DeviceDiscoverer):
+class OBEX_Pusher(DeviceDiscoverer):
 
     def pre_inquiry(self):
         self.inquiry_time_start = time.time()
@@ -52,7 +52,7 @@ class DevicesDiscoverer(DeviceDiscoverer):
                 except Exception as e:
                     print e
 
-    def obex_push(self, address):
+    def object_push(self, address):
         print '      |- Finding the OBEX_OBJPUSH service from %s' % address
         time.sleep(10)
         services = find_service(address=address, uuid=OBEX_OBJPUSH_CLASS)
@@ -77,18 +77,16 @@ class DevicesDiscoverer(DeviceDiscoverer):
         print "  Discovered Bluetooth Address:"
         print self.discovered_address
 
-d = DevicesDiscoverer(device_id=1)
-d.find_devices(lookup_names=False)
+op = OBEX_Pusher(device_id=1)
+op.find_devices(lookup_names=False)
 
-readfiles = [d, ]
-
-timeout = 20
+readfiles = [op, ]
 
 while True:
     rfds = select.select(readfiles, [], [])[0]
 
-    if d in rfds:
-        d.process_event()
+    if op in rfds:
+        op.process_event()
 
-    if d.done:
+    if op.done:
         break
