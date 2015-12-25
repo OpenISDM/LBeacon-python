@@ -27,6 +27,7 @@ from threading import Thread
 
 import select
 import time
+import itertools
 
 
 class OBEX_Pusher(DeviceDiscoverer):
@@ -35,8 +36,11 @@ class OBEX_Pusher(DeviceDiscoverer):
         self.inquiry_time_start = time.time()
         self.done = False
         self.discovered_address = []
-        self.signal_strength = -75
-        print "Inquiry Start!"
+        self.local_bdaddrs = ["00:1A:7D:DA:71:02",
+                              "00:1A:7D:DA:71:03", "00:1A:7D:DA:71:04"]
+        self.current_bdaddr = itertools.cycle(self.local_bdaddrs)
+        self.signal_strength = -80
+        print ("Inquiry Start!")
 
     def device_discovered(self, address, device_class, rssi, name):
         found_time = time.time()
@@ -46,44 +50,49 @@ class OBEX_Pusher(DeviceDiscoverer):
             if address not in self.discovered_address:
                 self.discovered_address.append(address)
                 try:
-                    print "   |- Created a Thread for OBJECT PUSH process"
-                    Thread(target=self.object_push, args=(address,)).start()
+                    print ("   |- Created a Thread for OBJECT PUSH process")
+                    bdaddr = next(self.current_bdaddr)
+                    Thread(target=self.object_push,
+                           args=(address, bdaddr,)).start()
                 except Exception as e:
-                    print e
+                    print (e)
         else:
-            print "   |- Bluetooth Signal Strength is NOT GOOD!"
+            print ("   |- Bluetooth Signal Strength is NOT GOOD!")
 
-    def object_push(self, address):
+    def object_push(self, address, bdaddr):
         s = BluetoothSocket(RFCOMM)
-        s.bind(('00:1A:7D:DA:71:13',0))
-        print '      |- Finding the OBEX_OBJPUSH service from %s' % address
+        s.bind((bdaddr, 0))
+        start_time = time.time()
         services = find_service(address=address, uuid=OBEX_OBJPUSH_CLASS)
+        end_time = time.time()
+        print ("      |- FindingEndTime [ %s ] - Finding OBEX_OBJPUSH service from[ %s ]" % (
+            end_time - start_time, address))
         if services:
             channel = services[0]['port']
             client = Client(address, channel)
-            print '      |- OBEX_OBJPUSH Channel is %s' % channel
+            print ("      |- OBEX_OBJPUSH Channel is %s" % channel)
             try:
                 client.set_socket(s)
                 client.connect()
                 client.put('message.txt', 'Hello World!')
                 client.disconnect()
             except IOError as e:
-                print e
+                print (e)
         else:
-            print '      |- NO OBEX_OBJPUSH PROFILE!!'
+            print ("      |- NO OBEX_OBJPUSH PROFILE!!")
 
     def inquiry_complete(self):
         self.inquiry_time_end = time.time()
         self.done = True
-        print "Inquiry Completed!"
+        print ("Inquiry Completed!")
         print ("  Inquiry Time - [ %f ]" %
                (self.inquiry_time_end - self.inquiry_time_start))
         print ("  Found %d devices" % len(self.discovered_address))
-        print "  Discovered Bluetooth Address:"
-        print self.discovered_address
+        print ("  Discovered Bluetooth Address:")
+        print (self.discovered_address)
 
-op = OBEX_Pusher(device_id=0)
-op.find_devices(lookup_names=False, duration=8, flush_cache=True)
+op = OBEX_Pusher(device_id=1)
+op.find_devices(lookup_names=True, duration=8, flush_cache=True)
 
 readfiles = [op, ]
 
